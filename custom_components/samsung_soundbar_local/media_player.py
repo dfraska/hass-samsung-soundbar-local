@@ -30,27 +30,22 @@ _SUPPORTED: MediaPlayerEntityFeature = (
     | MediaPlayerEntityFeature.SELECT_SOUND_MODE
 )
 
-_SOURCES = [
-    "HDMI_IN1",
-    "HDMI_IN2",
-    "E_ARC",
-    "ARC",
-    "D_IN",
-    "BT",
-    "WIFI_IDLE",
-]
+_SOURCES = {
+    "PC": "HDMI_IN1",
+    "HDMI 2": "HDMI_IN2",
+    "TV (eARC)": "E_ARC",
+    "TV (ARC)": "ARC",
+    "Optical": "D_IN",
+    "Bluetooth": "BT",
+    "Wi-Fi": "WIFI_IDLE",
+}
 
-_SOUND_MODES = [
-    "STANDARD",
-    "SURROUND",
-    "GAME",
-    "MOVIE",
-    "MUSIC",
-    "CLEARVOICE",
-    "DTS_VIRTUAL_X",
-    "ADAPTIVE",
-]
-
+_SOUND_MODES = {
+    "Standard": "STANDARD",
+    "Surround": "SURROUND",
+    "Game Pro": "GAME",
+    "Adaptive Sound": "ADAPTIVE",
+}
 
 async def async_setup_entry(hass, entry: ConfigEntry, async_add_entities):
     """Set up the soundbar platform from a config entry."""
@@ -65,9 +60,9 @@ class SoundbarLocalEntity(CoordinatorEntity, MediaPlayerEntity):
     """Representation of the soundbar as a Media Player entity."""
 
     _attr_supported_features = _SUPPORTED
-    _attr_source_list = _SOURCES
-    _attr_sound_mode_list = _SOUND_MODES
     _attr_device_class = MediaPlayerDeviceClass.SPEAKER
+    _attr_source_list = list(_SOURCES)
+    _attr_sound_mode_list = list(_SOUND_MODES)
 
     def __init__(self, coordinator, soundbar: AsyncSoundbar, entry: ConfigEntry) -> None:
         super().__init__(coordinator)
@@ -111,11 +106,11 @@ class SoundbarLocalEntity(CoordinatorEntity, MediaPlayerEntity):
             await self.coordinator.async_request_refresh()
 
     async def async_select_source(self, source: str) -> None:
-        await self._soundbar.select_input(source)
+        await self._soundbar.select_input(_SOURCES[source])
         await self.coordinator.async_request_refresh()
 
     async def async_select_sound_mode(self, sound_mode: str) -> None:
-        await self._soundbar.set_sound_mode(sound_mode)
+        await self._soundbar.set_sound_mode(_SOUND_MODES[sound_mode])
         await self.coordinator.async_request_refresh()
 
     # ---------- properties ----------
@@ -134,11 +129,19 @@ class SoundbarLocalEntity(CoordinatorEntity, MediaPlayerEntity):
 
     @property
     def source(self):
-        return self.coordinator.data.get("input")
+        input_name = self.coordinator.data.get("input")
+        return next(
+            (friendly for friendly, samsung in _SOURCES.items() if samsung == input_name),
+            input_name,
+        )
 
     @property
     def sound_mode(self):
-        return self.coordinator.data.get("sound_mode")
+        mode = self.coordinator.data.get("sound_mode")
+        return next(
+            (friendly for friendly, samsung in _SOUND_MODES.items() if samsung == mode),
+            mode,
+        )
 
     # ---------- coordinator update ----------
     @callback
